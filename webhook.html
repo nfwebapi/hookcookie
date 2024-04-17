@@ -1,0 +1,96 @@
+// public/webhook.html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Incoming Requests for <span id="webhookId"></span></title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            margin-bottom: 20px;
+        }
+        .request {
+            background-color: #fff;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .delete-button {
+            background-color: #ff6666;
+            color: #fff;
+            border: none;
+            border-radius: 3px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Incoming Requests for <span id="webhookId"></span></h1>
+    <div id="requests"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const webhookIdElement = document.getElementById('webhookId');
+        const requestsElement = document.getElementById('requests');
+        const webhookId = '{{WEBHOOK_ID}}';
+
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            socket.emit('joinRoom', webhookId); // Join the room corresponding to the webhook ID
+        });
+
+        socket.on('requestsUpdated', ({ id, requests }) => {
+            webhookIdElement.textContent = id;
+            requestsElement.innerHTML = '';
+            requests.forEach(request => {
+                const requestElement = document.createElement('div');
+                requestElement.classList.add('request');
+                requestElement.innerHTML = `
+                    <div>
+                        <pre>${JSON.stringify(request, null, 2)}</pre>
+                        <button class="delete-button" onclick="deleteRequest('${id}', '${request.id}')">Delete</button>
+                    </div>`;
+                requestsElement.appendChild(requestElement);
+            });
+            // Save requests to local storage
+            localStorage.setItem(webhookId, JSON.stringify(requests));
+        });
+
+        // Load initial request history from local storage
+        const initialRequests = JSON.parse(localStorage.getItem(webhookId));
+        if (initialRequests) {
+            socket.emit('requestsUpdated', { id: webhookId, requests: initialRequests });
+        }
+
+        // Function to delete a specific request
+        function deleteRequest(webhookId, requestId) {
+            console.log('Deleting request:', { webhookId, requestId }); // Log the parameters
+
+            const confirmed = confirm('Are you sure you want to delete this request?');
+            if (confirmed) {
+                // Send a DELETE request to delete the specific request
+                fetch(`/webhook/${webhookId}/${requestId}`, { method: 'DELETE' })
+                    .then(response => {
+                        if (response.ok) {
+                            console.log('Request deleted successfully');
+                            // Refresh request history
+                            socket.emit('loadInitialRequests', webhookId);
+                        } else {
+                            console.error('Failed to delete request');
+                        }
+                    })
+                    .catch(error => console.error('Error deleting request:', error));
+            }
+        }
+    </script>
+</body>
+</html>
