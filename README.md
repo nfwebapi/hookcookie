@@ -7,7 +7,7 @@ This is a Node.js project I created, which essentially performs the same functio
 
 # Send a Request
 
-2. Make a post request to the URL you opened in step 1. This action will generate a special ID for your request. Append Request ID:
+2. Make a post request to the URL you opened in step 1. This action will generate a special ID for your request.
 
 3. After receiving the special ID, append it to the URL in the following format: localhost:3000/{anything-you-want}/read/{request_id}. Replace {request_id} with the ID you received in step 2.
 
